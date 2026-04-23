@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soluções com IA — @perissejul.ia</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'surface':   '#FAFAFA',
+            'ink':       '#1A1A1A',
+            'mid':       '#555555',
+            'subtle':    '#888888',
+            'rule':      'rgba(26,26,26,0.08)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #FAFAFA;
+      color: #1A1A1A;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100dvh;
+    }
+
+    /* ── Progress bar ── */
+    #progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 1.5px;
+      width: 0%;
+      background: #1A1A1A;
+      z-index: 9999;
+      transition: width 80ms linear;
+      pointer-events: none;
+    }
+
+    /* ── Glassmorphism header ── */
+    #header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      background: rgba(250,250,250,0.78);
+      border-bottom: 1px solid rgba(26,26,26,0.06);
+    }
+
+    /* ── Display font shorthand ── */
+    .serif {
+      font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    }
+
+    /* ── Accordion ── */
+    .card {
+      background: #F4F4F2;
+      border: 1px solid rgba(26,26,26,0.07);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .card-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      text-align: left;
+      padding: 22px 24px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .card-trigger:focus-visible {
+      outline: 2px solid rgba(26,26,26,0.25);
+      outline-offset: -2px;
+      border-radius: 18px;
+    }
+
+    .icon-ring {
+      flex-shrink: 0;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(26,26,26,0.18);
+      display: grid;
+      place-items: center;
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .icon-plus {
+      transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+      display: block;
+    }
+
+    .card-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.52s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card-body.open {
+      max-height: 2400px;
+    }
+
+    .icon-plus.open {
+      transform: rotate(45deg);
+    }
+
+    /* ── Prompt textarea ── */
+    .prompt-field {
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      background: #EEECEA;
+      border: 1px solid rgba(26,26,26,0.09);
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.75;
+      color: #1A1A1A;
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .prompt-field:focus {
+      border-color: rgba(26,26,26,0.22);
+      background: #E9E7E5;
+    }
+
+    .prompt-field::placeholder {
+      color: #ADADAD;
+    }
+
+    /* ── Copy btn ── */
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #888;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .copy-btn:hover { color: #1A1A1A; }
+
+    /* ── Rule ── */
+    .rule {
+      width: 36px;
+      height: 1px;
+      background: rgba(26,26,26,0.18);
+    }
+
+    /* ── Label caps ── */
+    .label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    /* ══════════════════════════════════════
+       ANIMATIONS
+    ══════════════════════════════════════ */
+
+    /* 1. Blob de fundo */
+    .blob-wrap {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0;
+      animation: blobFadeIn 2s ease forwards;
+    }
+
+    .blob-1 {
+      width: 520px; height: 520px;
+      top: -140px; right: -100px;
+      background: radial-gradient(circle, rgba(200,195,185,0.32) 0%, transparent 70%);
+      animation-delay: 0.3s;
+      animation: blobFadeIn 2s 0.3s ease forwards, blobDrift1 18s 2.3s ease-in-out infinite alternate;
+    }
+
+    .blob-2 {
+      width: 400px; height: 400px;
+      bottom: 10%; left: -120px;
+      background: radial-gradient(circle, rgba(180,175,165,0.22) 0%, transparent 70%);
+      animation: blobFadeIn 2s 0.8s ease forwards, blobDrift2 22s 2.8s ease-in-out infinite alternate;
+    }
+
+    .blob-3 {
+      width: 260px; height: 260px;
+      top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(210,205,195,0.18) 0%, transparent 70%);
+      animation: blobFadeIn 2s 1.2s ease forwards, blobDrift3 26s 3.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes blobFadeIn {
+      to { opacity: 1; }
+    }
+
+    @keyframes blobDrift1 {
+      0%   { transform: translate(0, 0) scale(1); }
+      33%  { transform: translate(-40px, 30px) scale(1.06); }
+      66%  { transform: translate(20px, -20px) scale(0.96); }
+      100% { transform: translate(-20px, 40px) scale(1.04); }
+    }
+
+    @keyframes blobDrift2 {
+      0%   { transform: translate(0, 0) scale(1); }
+      40%  { transform: translate(50px, -35px) scale(1.08); }
+      100% { transform: translate(20px, 30px) scale(0.95); }
+    }
+
+    @keyframes blobDrift3 {
+      0%   { transform: translate(-50%, -50%) scale(1); }
+      50%  { transform: translate(calc(-50% + 30px), calc(-50% - 20px)) scale(1.1); }
+      100% { transform: translate(calc(-50% - 20px), calc(-50% + 15px)) scale(0.94); }
+    }
+
+    /* 2. Stagger fade-up hero */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(22px);
+      animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .delay-1 { animation-delay: 0.15s; }
+    .delay-2 { animation-delay: 0.35s; }
+    .delay-3 { animation-delay: 0.55s; }
+    .delay-4 { animation-delay: 0.72s; }
+    .delay-5 { animation-delay: 0.88s; }
+
+    /* 3. Shimmer no h1 */
+    .shimmer-text {
+      background: linear-gradient(
+        105deg,
+        #1A1A1A 0%,
+        #1A1A1A 38%,
+        #8a8070 48%,
+        #c8bfb0 52%,
+        #1A1A1A 62%,
+        #1A1A1A 100%
+      );
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 5s 1.2s ease-in-out infinite;
+    }
+
+
+    @keyframes shimmer {
+      0%   { background-position: 200% center; }
+      40%  { background-position: -60% center; }
+      100% { background-position: -60% center; }
+    }
+
+    /* Sections fade-in on scroll */
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Reading Progress -->
+  <div id="progress" role="progressbar" aria-hidden="true"></div>
+
+  <!-- Animated Background Blobs -->
+  <div class="blob-wrap" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- Fixed Header -->
+  <header id="header">
+    <div style="max-width:680px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <span class="serif" style="font-size:1.05rem; font-weight:300; letter-spacing:0.01em; color:#1A1A1A;">
+        Soluções com IA
+      </span>
+      <a
+        href="https://instagram.com/perissejul.ia"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="label"
+        style="text-decoration:none; color:#555; transition:color 0.2s;"
+        onmouseover="this.style.color='#1A1A1A'"
+        onmouseout="this.style.color='#555'"
+      >
+        @perissejul.ia
+      </a>
+    </div>
+  </header>
+
+  <!-- Page Content -->
+  <main style="max-width:680px; margin:0 auto; padding:108px 24px 80px;">
+
+    <!-- ── Hero ── -->
+    <section style="margin-bottom:64px;">
+      <p class="label fade-up delay-1" style="margin-bottom:20px;">Guia Exclusivo</p>
+
+      <h1 class="serif fade-up delay-2" style="font-size:clamp(2.6rem,9vw,4rem); font-weight:300; line-height:1.08; letter-spacing:-0.01em; color:#1A1A1A; margin-bottom:24px;">
+        <span class="shimmer-text">Soluções<br>
+        com IA<em style="font-style:italic;"> by</em></span><br>
+        <span style="color:#555;">@perissejul.ia</span>
+      </h1>
+
+      <p class="fade-up delay-3" style="color:#555; max-width:480px; line-height:1.75; font-size:15px;">
+        Prompts, workflows, e estratégias para você usar inteligência artificial para otimizar a sua vida.
+      </p>
+
+      <div class="rule fade-up delay-4" style="margin-top:40px;"></div>
+    </section>
+
+    <!-- ── Accordion Cards ── -->
+    <section class="reveal" style="margin-bottom:72px;">
+      <p class="label" style="margin-bottom:24px;">Conteúdo</p>
+
+      <!-- Card 01 -->
+      <div class="card">
+        <button
+          class="card-trigger"
+          onclick="toggleCard(this)"
+          aria-expanded="false"
+        >
+          <div style="display:flex; align-items:center; gap:16px;">
+            <span class="label" style="color:#AAAAAA; flex-shrink:0;">01</span>
+            <span class="serif" style="font-size:1.3rem; font-weight:400; color:#1A1A1A;">
+              Prompt de Design
+            </span>
+          </div>
+          <div class="icon-ring">
+            <svg class="icon-plus" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <line x1="5" y1="1" x2="5" y2="9" stroke="#1A1A1A" stroke-width="1.3" stroke-linecap="round"/>
+              <line x1="1" y1="5" x2="9" y2="5" stroke="#1A1A1A" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </button>
+
+        <div class="card-body">
+          <div style="padding:0 24px 28px;">
+            <div style="width:100%; height:1px; background:rgba(26,26,26,0.07); margin-bottom:24px;"></div>
+
+            <p style="font-size:14px; color:#555; line-height:1.7; margin-bottom:20px;">
+              Crie designs perfeitos no GPT Image 2.0 com este prompt!
+            </p>
+
+            <!-- Prompt Field -->
+            <div>
+              <textarea
+                id="corpo-prompt"
+                class="prompt-field"
+                style="min-height:480px;"
+                spellcheck="false"
+              >Generate a card by absorbing the visual identity from PHOTO 1 and applying it to PHOTO 2.
+---
+CANVAS:
+- Size: [largura em px altura em px]
+- Margin: [margem em px]
+- All content must stay within the safe area defined by these margins
+---
+VISUAL IDENTITY — extract from PHOTO 1:
+- Color grading and editing style
+- Crop and composition logic
+- Text placement and hierarchy
+- Overall mood and contrast level
+---
+PHOTO RULES — apply to PHOTO 2:
+- Preserve 100% of the original angle, side, and person from PHOTO 2
+- Apply the same editing style from PHOTO 1: slightly darker, high contrast
+- The person or principal object must remain the dominant visual element
+---
+TYPOGRAPHY:
+- Font: [Nome da fonte]
+- Text color: [Cor do texto]
+- Headline: "[Título do card]"
+- Subtext: "[Subtítulo do card]"
+- Text size: [grande / pequeno / variado]
+- Apply depth effect: place text as a layer BEHIND the person or main subject
+- At least one word or letter must be partially covered by the figure in the foreground
+---
+GRAPHIC ELEMENTS:
+- Add [de 2 a 4] floating elements such as: arrows, thin lines, dots, small abstract shapes
+- Style: [defina o estilo dos elementos]
+- Color: [escolha a cor dos elementos]
+---
+OPTIONAL LAYER — [PHOTO 3 / PNG RESOURCE]:
+- If a third asset is provided ([PHOTO 3]), treat it as an overlay element
+- Apply it as a floating graphic, texture, or decorative element
+---
+FINAL OUTPUT REQUIREMENTS:
+- The result must look like a premium editorial Instagram cover
+- Visual hierarchy: person → headline → floating elements → subtext
+- The composition must be readable on mobile at a glance
+- No busy backgrounds, no clutter, no generic stock aesthetics
+- The cover must stop the scroll in the first second</textarea>
+
+              <!-- Disclaimer -->
+              <div style="margin-top:16px; padding:14px 16px; background:rgba(26,26,26,0.04); border-radius:10px; border-left:2px solid rgba(26,26,26,0.15);">
+                <p style="font-size:12px; color:#888; line-height:1.7; font-family:'Inter',sans-serif;">
+                  <strong style="color:#555; font-weight:500;">Atenção:</strong>
+                  Substitua os <code style="font-family:monospace; background:rgba(26,26,26,0.07); padding:1px 5px; border-radius:4px; font-size:11px;">[ ]</code> antes de enviar ao GPT Image 2.0. O resto é opcional e ajustável por projeto.
+                </p>
+              </div>
+
+              <button class="copy-btn" onclick="copyPrompt(this)" type="button" style="margin-top:14px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <rect x="0.5" y="3.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.1"/>
+                  <path d="M3.5 3V2A1.5 1.5 0 015 .5h4.5A1.5 1.5 0 0111 2v5.5A1.5 1.5 0 019.5 9H9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                </svg>
+                <span class="copy-label">Copiar prompt</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /Card 01 -->
+
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer style="border-top:1px solid rgba(26,26,26,0.07); padding-top:32px;">
+      <p style="font-size:12px; color:#AAAAAA; line-height:1.8;">
+        Criado com cuidado por
+        <strong style="color:#555; font-weight:500;">@perissejul.ia</strong><br>
+        Compartilhe com intenção.
+      </p>
+    </footer>
+
+  </main>
+
+  <script>
+    /* ── Scroll reveal ── */
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    /* ── Reading progress ── */
+    const bar = document.getElementById('progress');
+    function updateProgress() {
+      const el = document.documentElement;
+      const scrolled = el.scrollTop || document.body.scrollTop;
+      const total = el.scrollHeight - el.clientHeight;
+      bar.style.width = total > 0 ? (scrolled / total * 100) + '%' : '0%';
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+
+    /* ── Accordion ── */
+    function toggleCard(trigger) {
+      const body = trigger.nextElementSibling;
+      const icon = trigger.querySelector('.icon-plus');
+      const ring = trigger.querySelector('.icon-ring');
+      const isOpen = body.classList.contains('open');
+
+      // Close all first
+      document.querySelectorAll('.card-body.open').forEach(b => b.classList.remove('open'));
+      document.querySelectorAll('.icon-plus.open').forEach(i => i.classList.remove('open'));
+      document.querySelectorAll('.card-trigger[aria-expanded="true"]').forEach(t => t.setAttribute('aria-expanded','false'));
+
+      if (!isOpen) {
+        body.classList.add('open');
+        icon.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    /* ── Copy prompt ── */
+    function copyPrompt(btn) {
+      const textarea = btn.closest('.card-body').querySelector('textarea');
+      const text = textarea.value.trim();
+      if (!text) {
+        const label = btn.querySelector('.copy-label');
+        label.textContent = 'Escreva algo primeiro';
+        setTimeout(() => { label.textContent = 'Copiar prompt'; }, 2000);
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        const label = btn.querySelector('.copy-label');
+        label.textContent = 'Copiado ✓';
+        setTimeout(() => { label.textContent = 'Copiar prompt'; }, 2200);
+      }).catch(() => {
+        textarea.select();
+        document.execCommand('copy');
+      });
+    }
+  </script>
+</body>
+</html>
